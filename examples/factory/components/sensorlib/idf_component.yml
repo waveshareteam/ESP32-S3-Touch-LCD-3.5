@@ -1,0 +1,10 @@
+dependencies:
+  idf:
+    version: '>=5.0.0'
+description: Commonly used I2C , SPI device multi-platform libraries
+files:
+  exclude:
+  - .git
+license: MIT
+url: https://github.com/cfscn/SensorLib
+version: 0.2.2

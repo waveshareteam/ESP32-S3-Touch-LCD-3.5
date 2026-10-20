@@ -1,0 +1,28 @@
+version: "0.6.0-beta2"
+description: ESP-Brookesia-Core is a core component of ESP-Brookesia.
+url: https://github.com/espressif/esp-brookesia/tree/master/core/brookesia_core
+issues: https://github.com/espressif/esp-brookesia/issues
+repository: https://github.com/espressif/esp-brookesia.git
+dependencies:
+  idf: ">=5.3"
+
+  # Utilities
+  espressif/cmake_utilities:
+    version: "0.5.3"
+    public: true
+
+  espressif/esp-lib-utils:
+    version: "0.3.0"
+    public: true
+
+  espressif/esp-boost:
+    version: "0.3.1"
+    public: true
+
+  # GUI - LVGL
+  lvgl/lvgl:
+    version: "9.6.0~1"
+    public: true
+
+  # This example enables only the Phone GUI. Animation Player, AI and Speaker
+  # are disabled in sdkconfig.defaults; their media dependencies are omitted.

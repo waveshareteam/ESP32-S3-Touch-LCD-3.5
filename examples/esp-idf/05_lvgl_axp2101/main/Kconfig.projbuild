@@ -57,3 +57,18 @@ menu "XPowersLib Configuration"
 
 
 endmenu
+
+# LVGL 8 has none of these LVGL 9 decoder options. Keep them disabled so
+# the component resolver can evaluate newer LVGL candidates on ESP-IDF 5.5.
+# Remove these compatibility symbols when migrating this example to LVGL 9.
+config LV_USE_LIBJPEG_TURBO
+    bool "LVGL 9 libjpeg-turbo compatibility flag (keep disabled)"
+    default n
+
+config LV_USE_LIBPNG
+    bool "LVGL 9 libpng compatibility flag (keep disabled)"
+    default n
+
+config LV_USE_LZ4
+    bool "LVGL 9 LZ4 compatibility flag (keep disabled)"
+    default n

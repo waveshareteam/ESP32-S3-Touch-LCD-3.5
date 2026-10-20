@@ -1,0 +1,35 @@
+# Generated ESP-IDF and Arduino build state
+**/.vscode/
+**/.idea/
+**/build/
+**/managed_components/
+**/dependencies.lock
+**/sdkconfig
+**/sdkconfig.old
+**/__pycache__/
+*.pyc
+*.log
+*.elf
+*.map
+*.o
+*.a
+release-artifacts/
+release-downloads/
+release-dist/
+.ci-template/
+.DS_Store
+Thumbs.db
+
+# Local AI coding agent state
+.claude/
+.cursor/
+.codex/
+.gemini/
+.windsurf/
+.continue/
+.roo/
+.cline/
+.aider*
+
+# Keep firmware/*.bin and SD image assets (*.bin) under example data/.
+# Keep .gitmodules, .gitattributes and .gitkeep when present.

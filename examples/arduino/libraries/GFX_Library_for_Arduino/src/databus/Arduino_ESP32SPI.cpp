@@ -127,7 +127,12 @@ static void _on_apb_change(void *arg, apb_change_ev_t ev_type, uint32_t old_apb,
   }
   else
   {
+    // Arduino-ESP32 3.3.6 added the bus argument (espressif/arduino-esp32#12265).
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 6)
+    _spi->dev->clock.val = spiFrequencyToClockDiv(_spi, old_apb / ((_spi->dev->clock.clkdiv_pre + 1) * (_spi->dev->clock.clkcnt_n + 1)));
+#else
     _spi->dev->clock.val = spiFrequencyToClockDiv(old_apb / ((_spi->dev->clock.clkdiv_pre + 1) * (_spi->dev->clock.clkcnt_n + 1)));
+#endif
     SPI_MUTEX_UNLOCK();
   }
 }
@@ -174,7 +179,11 @@ bool Arduino_ESP32SPI::begin(int32_t speed, int8_t dataMode)
 
   if (!_div)
   {
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 6)
+    _div = spiFrequencyToClockDiv(&_spi_bus_array[_spi_num], _speed);
+#else
     _div = spiFrequencyToClockDiv(_speed);
+#endif
   }
 
   // set pin mode

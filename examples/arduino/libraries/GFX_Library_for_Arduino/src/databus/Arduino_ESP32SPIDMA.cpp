@@ -58,10 +58,13 @@ bool Arduino_ESP32SPIDMA::begin(int32_t speed, int8_t dataMode)
   _speed = (speed == GFX_NOT_DEFINED) ? SPI_DEFAULT_FREQ : speed;
   _dataMode = (dataMode == GFX_NOT_DEFINED) ? SPI_MODE0 : dataMode;
 
+  // DMA transfers use devcfg.clock_speed_hz; this divider is not used.
+#if ESP_ARDUINO_VERSION < ESP_ARDUINO_VERSION_VAL(3, 3, 6)
   if (!_div)
   {
     _div = spiFrequencyToClockDiv(_speed);
   }
+#endif
 
   // set pin mode
   if (_dc != GFX_NOT_DEFINED)

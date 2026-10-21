@@ -18,6 +18,8 @@ Use the factory ESP-IDF version in the [development environment](../../README.md
 
 The desktop opens with Settings first and AIChats second; tap an icon to open an application. Settings provides brightness, volume, Wi-Fi scanning/setup and SD information; place JPEG photos in `/photo` and MP3 audio in `/music` at the SD-card root.
 
+For application controls and Wi-Fi setup, see the [user guide](USER_GUIDE.md).
+
 ## Troubleshooting
 
 Wi-Fi uses saved credentials first, otherwise the demonstration network configured in [wifi_manager.h](components/network_service/wifi_manager.h); connect another network through **Settings → Wi-Fi setup**, scan the displayed QR code or join its hotspot, and open `http://192.168.4.1`. Weather uses the included API settings for `cn.apihz.cn`; AIChats requires network activation, and a full `idf.py flash` is needed to install the speech model at `0x810000` as well as the application.

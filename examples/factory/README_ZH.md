@@ -18,6 +18,8 @@
 
 启动后显示桌面，Settings 位于第一、AIChats 位于第二，点击图标进入应用。设置中可调背光和音量、扫描或配置 Wi-Fi、查看 SD 信息；JPEG 图片和 MP3 音频分别放入 SD 卡根目录的 `/photo`、`/music` 文件夹。
 
+各应用操作与配网步骤请参照[使用说明](USER_GUIDE_ZH.md)。
+
 ## 常见问题
 
 联网优先使用已保存的账号，否则使用 [wifi_manager.h](components/network_service/wifi_manager.h) 中的演示网络；其他网络通过 **Settings → Wi-Fi setup** 配置，扫描屏幕二维码或连接其热点后访问 `http://192.168.4.1`。天气使用内置的 `cn.apihz.cn` API 配置；AIChats 需要联网激活，首次烧录须使用完整的 `idf.py flash`，包含 `0x810000` 处的语音模型，不能仅烧录应用。

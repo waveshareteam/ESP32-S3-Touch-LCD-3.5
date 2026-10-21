@@ -43,6 +43,13 @@ typedef enum {
 } esp_lcd_touch_ft6336_gesture_t;
 
 esp_err_t esp_lcd_touch_ft6336_get_gesture(esp_lcd_touch_handle_t tp, esp_lcd_touch_ft6336_gesture_t *gesture);
+/**
+ * @brief Clear the stored gesture ID and verify register 0xD3 reads zero.
+ * @return ESP_OK on verified clear, an I2C error, or ESP_ERR_INVALID_RESPONSE
+ *         if the controller retains a nonzero ID. Do not treat a retained
+ *         result as a new gesture.
+ */
+esp_err_t esp_lcd_touch_ft6336_clear_gesture(esp_lcd_touch_handle_t tp);
 esp_err_t esp_lcd_touch_ft6336_set_gesture_enabled(esp_lcd_touch_handle_t tp, bool enabled);
 
 /**

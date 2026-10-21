@@ -1,3 +1,4 @@
+#include "bsp_board_extra.h"
 /*
  * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
@@ -59,7 +60,7 @@ constexpr uint32_t PLAYBACK_IDLE_WAIT_MS = 1000;
 constexpr size_t CONTROL_QUEUE_LENGTH = 24;
 constexpr size_t PCM_QUEUE_LENGTH = 40;
 constexpr size_t PLAYBACK_QUEUE_LENGTH = 10;
-constexpr size_t DEVICE_TDM_CHANNELS = BSP_AUDIO_VOICE_CHANNELS;
+constexpr size_t DEVICE_TDM_CHANNELS = CODEC_VOICE_INPUT_CHANNELS;
 constexpr size_t DEVICE_MIC1_SLOT = 0;
 static_assert(
     XiaozhiAudioProcessor::INPUT_CHANNELS == 1,
@@ -1726,26 +1727,26 @@ bool XiaozhiApp::ensureAudioReady()
         return false;
     }
 
-    esp_err_t ret = bsp_audio_session_acquire(BSP_AUDIO_OWNER_XIAOZHI);
+    esp_err_t ret = bsp_extra_audio_session_acquire(BSP_EXTRA_AUDIO_OWNER_XIAOZHI);
     // Music releases its decoder on its worker after the GUI pause callback.
     // Allow that short handover without displaying a five-second retry error.
     for (int attempt = 0; ret != ESP_OK && attempt < 10 &&
             _visible.load() && !_shutdown.load() &&
-            bsp_audio_session_get_owner() == BSP_AUDIO_OWNER_APP; ++attempt) {
+            (bsp_extra_audio_session_get_owner() == BSP_EXTRA_AUDIO_OWNER_MUSIC || bsp_extra_audio_session_get_owner() == BSP_EXTRA_AUDIO_OWNER_RECORDER); ++attempt) {
         vTaskDelay(pdMS_TO_TICKS(50));
-        ret = bsp_audio_session_acquire(BSP_AUDIO_OWNER_XIAOZHI);
+        ret = bsp_extra_audio_session_acquire(BSP_EXTRA_AUDIO_OWNER_XIAOZHI);
     }
     if (ret != ESP_OK) {
         ESP_UTILS_LOGW(
             "Xiaozhi audio is busy (%s)",
-            bsp_audio_owner_name(bsp_audio_session_get_owner())
+            bsp_extra_audio_owner_name(bsp_extra_audio_session_get_owner())
         );
         setError(ret, "Acquire audio session");
         return false;
     }
     _audio_session_acquired.store(true);
 
-    ret = bsp_audio_voice_open(DEVICE_AUDIO_SAMPLE_RATE, true);
+    ret = bsp_extra_codec_set_voice_fs(DEVICE_AUDIO_SAMPLE_RATE, 16, 2, 3, 1);
     if (ret != ESP_OK) {
         setError(ret, "Configure audio codec");
         shutdownAudio();
@@ -2044,7 +2045,7 @@ bool XiaozhiApp::shutdownAudio()
 bool XiaozhiApp::releaseAudioSession()
 {
     if (_codec_claimed.load()) {
-        const esp_err_t stop_result = bsp_audio_voice_close();
+        const esp_err_t stop_result = bsp_extra_codec_dev_stop();
         if (stop_result != ESP_OK) {
             ESP_UTILS_LOGE("Xiaozhi codec shutdown failed: %s", esp_err_to_name(stop_result));
             return false;
@@ -2053,7 +2054,7 @@ bool XiaozhiApp::releaseAudioSession()
     }
     if (_audio_session_acquired.load()) {
         const esp_err_t release_result =
-            bsp_audio_session_release(BSP_AUDIO_OWNER_XIAOZHI);
+            bsp_extra_audio_session_release(BSP_EXTRA_AUDIO_OWNER_XIAOZHI);
         if (release_result != ESP_OK) {
             ESP_UTILS_LOGE("Xiaozhi audio-session release failed: %s",
                            esp_err_to_name(release_result));
@@ -2805,7 +2806,7 @@ void XiaozhiApp::inputAudio()
             continue;
         }
         size_t bytes_read = 0;
-        esp_err_t ret = bsp_audio_voice_read(
+        esp_err_t ret = bsp_extra_i2s_read(
             device_tdm, input_bytes, &bytes_read, 100
         );
         if (ret == ESP_OK && bytes_read > 0 && _audio_processor) {
@@ -3171,7 +3172,7 @@ void XiaozhiApp::playAudio()
             size_t written = 0;
             size_t write_size =
                 playback_samples * 2 * sizeof(int16_t);
-            esp_err_t write_ret = bsp_audio_voice_write(
+            esp_err_t write_ret = bsp_extra_i2s_write(
                 stereo, write_size, &written, 200
             );
             if (write_ret == ESP_OK && written == write_size) {

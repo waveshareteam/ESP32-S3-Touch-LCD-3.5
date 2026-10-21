@@ -1,3 +1,4 @@
+#include "bsp_board_extra.h"
 #include "Music.hpp"
 #include "esp_mp3_dec.h"
 #include "esp_heap_caps.h"
@@ -51,7 +52,7 @@ void Music::work() {
     FILE *input=nullptr; void *decoder=nullptr; bool audio=false;
     unsigned last=UINT32_MAX; uint64_t samples=0; uint32_t rate=0; uint8_t channels=0;
     auto cleanup=[&]() {
-        if(audio) { bsp_audio_drain(); bsp_audio_close(); bsp_audio_release(); audio=false; }
+        if(audio) { bsp_extra_audio_drain(); bsp_extra_codec_dev_stop(); bsp_extra_audio_release(); audio=false; }
         if(decoder) { esp_mp3_dec_close(decoder); decoder=nullptr; }
         if(input) { fclose(input); input=nullptr; }
         rate=0; channels=0;
@@ -71,7 +72,7 @@ void Music::work() {
             publish(v);
         }
         if(!v.ready || !play_.load()) {
-            if(audio) { bsp_audio_drain(); bsp_audio_close(); bsp_audio_release(); audio=false; rate=0; }
+            if(audio) { bsp_extra_audio_drain(); bsp_extra_codec_dev_stop(); bsp_extra_audio_release(); audio=false; rate=0; }
             if(v.ready && v.playing) snprintf(v.status,sizeof(v.status),"Paused");
             v.playing=false;
             publish(v); vTaskDelay(pdMS_TO_TICKS(30)); continue;
@@ -120,12 +121,12 @@ void Music::work() {
             auto *s=reinterpret_cast<int16_t *>(pcm);
             for(size_t i=0;i<frame_samples;++i) s[i]=(int32_t(s[2*i])+s[2*i+1])/2;
         }
-        if(!audio) audio=bsp_audio_acquire(100);
+        if(!audio) audio=bsp_extra_audio_acquire(BSP_EXTRA_AUDIO_OWNER_MUSIC, 100);
         esp_err_t err=audio?ESP_OK:ESP_ERR_TIMEOUT;
         if(err==ESP_OK && (rate!=info.sample_rate || channels!=1)) {
-            err=bsp_audio_open(info.sample_rate,1); rate=info.sample_rate; channels=1;
+            err=bsp_extra_codec_set_fs(info.sample_rate, 16, static_cast<i2s_slot_mode_t>(1)); rate=info.sample_rate; channels=1;
         }
-        if(err==ESP_OK) err=bsp_audio_write(pcm,frame_samples*2);
+        if(err==ESP_OK) err=bsp_extra_i2s_write(pcm, frame_samples*2, nullptr, 1000);
         if(err!=ESP_OK) {
             cleanup(); play_=false; v.ready=false; snprintf(v.status,sizeof(v.status),"Audio unavailable: %s",esp_err_to_name(err)); publish(v); continue;
         }

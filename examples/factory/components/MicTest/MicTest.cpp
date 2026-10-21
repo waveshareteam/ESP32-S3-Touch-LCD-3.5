@@ -1,3 +1,4 @@
+#include "bsp_board_extra.h"
 /* SPDX-License-Identifier: Apache-2.0
  * C5 3.5 record/replay workflow, using the S3 BSP's shared audio session. */
 #include "MicTest.hpp"
@@ -57,9 +58,9 @@ bool MicTest::run() {
 }
 void MicTest::work() {
     View v; publish(v);
-    if(!bsp_audio_acquire(1000)) { snprintf(v.status,sizeof(v.status),"Audio unavailable or busy. Reopen to retry."); publish(v); return; }
-    if(bsp_audio_open(RATE,1)!=ESP_OK) {
-        snprintf(v.status,sizeof(v.status),"Microphone initialization failed."); publish(v); bsp_audio_release(); return;
+    if(!bsp_extra_audio_acquire(BSP_EXTRA_AUDIO_OWNER_RECORDER, 1000)) { snprintf(v.status,sizeof(v.status),"Audio unavailable or busy. Reopen to retry."); publish(v); return; }
+    if(bsp_extra_codec_set_fs(RATE, 16, static_cast<i2s_slot_mode_t>(1))!=ESP_OK) {
+        snprintf(v.status,sizeof(v.status),"Microphone initialization failed."); publish(v); bsp_extra_audio_release(); return;
     }
     FILE *file=nullptr; bool sd=false; unsigned bytes=0, playback_left=0;
     char active_path[128]={}; int16_t samples[512];
@@ -80,7 +81,7 @@ void MicTest::work() {
             } else if(!success) snprintf(v.status,sizeof(v.status),"Playback failed. Check audio / SD card.");
         }
         if(v.mode==Mode::Play) {
-            bsp_audio_drain();
+            bsp_extra_audio_drain();
             if(success) snprintf(v.status,sizeof(v.status),"Playback stopped. Ready to record again.");
         }
         if(sd) { bsp_sdcard_release(); sd=false; }
@@ -122,10 +123,10 @@ void MicTest::work() {
         if(v.mode==Mode::Play) {
             size_t count=std::min<size_t>(sizeof(samples),playback_left);
             if(!count) { finish(true); snprintf(v.status,sizeof(v.status),"Playback finished. Ready to record again."); }
-            else if(fread(samples,1,count,file)!=count || bsp_audio_write(samples,count)!=ESP_OK) finish(false);
+            else if(fread(samples,1,count,file)!=count || bsp_extra_i2s_write(samples, count, nullptr, 1000)!=ESP_OK) finish(false);
             else { playback_left-=count; bytes+=count; v.elapsed_ms=bytes*1000/(RATE*2); snprintf(v.status,sizeof(v.status),"Playing  %u.%u s",v.elapsed_ms/1000,(v.elapsed_ms/100)%10); }
         } else {
-            if(bsp_audio_read(samples,sizeof(samples))!=ESP_OK) { finish(false); v.ready=false; snprintf(v.status,sizeof(v.status),"Microphone read failed. Reopen to retry."); publish(v); break; }
+            if(bsp_extra_i2s_read(samples, sizeof(samples), nullptr, 1000)!=ESP_OK) { finish(false); v.ready=false; snprintf(v.status,sizeof(v.status),"Microphone read failed. Reopen to retry."); publish(v); break; }
             uint64_t energy=0;
             for(int16_t sample:samples) energy+=int64_t(sample)*sample;
             const double rms=std::sqrt(double(energy)/512.0);
@@ -143,7 +144,7 @@ void MicTest::work() {
         }
         publish(v);
     }
-    finish(true); bsp_audio_release(); v.ready=false; publish(v);
+    finish(true); bsp_extra_audio_release(); v.ready=false; publish(v);
 }
 void MicTest::refresh() {
     View v=snapshot(); char value[20]; snprintf(value,sizeof(value),"%u%%",v.level);

@@ -4,7 +4,7 @@
 
 ## 功能
 
-运行 320 × 480 竖屏桌面，包含 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera 和 Mic Test。外设由 BSP 初始化，应用使用 LVGL 9.6 与 Brookesia 生命周期封装。
+运行 320 × 480 竖屏桌面，包含 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera、Mic Test、Button Test 和 Display Test。外设由 BSP 初始化，应用使用 LVGL 9.6 与 Brookesia 生命周期封装。
 
 ## 硬件需求
 
@@ -16,7 +16,11 @@
 
 ## 预期现象
 
-启动后显示桌面，Settings 位于第一、AIChats 位于第二，点击图标进入应用。设置中可调背光和音量、扫描或配置 Wi-Fi、查看 SD 信息；JPEG 图片和 MP3 音频分别放入 SD 卡根目录的 `/photo`、`/music` 文件夹。
+启动后显示 12 个应用，Settings 位于第一、AIChats 位于第二，点击图标进入应用。启动时保持背光关闭，桌面首帧传输完成后再点亮。设置中可调背光和音量、扫描或配置 Wi-Fi、查看 SD 信息；JPEG 图片和 MP3 音频分别放入 SD 卡根目录的 `/photo`、`/music` 文件夹。
+
+短按 PWR 按键一次开机，长按 5 秒关机。在 Button Test 中测试 PWR 时请短按。
+
+各应用操作与配网步骤请参照[使用说明](USER_GUIDE_ZH.md)。
 
 ## 常见问题
 

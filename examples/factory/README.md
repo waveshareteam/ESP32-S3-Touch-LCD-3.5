@@ -4,7 +4,7 @@
 
 ## What It Does
 
-Runs a 320 × 480 portrait desktop with Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera and Mic Test. The BSP initializes the board peripherals; applications use LVGL 9.6 and the Brookesia lifecycle.
+Runs a 320 × 480 portrait desktop with Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera, Mic Test, Button Test and Display Test. The BSP initializes the board peripherals; applications use LVGL 9.6 and the Brookesia lifecycle.
 
 ## Hardware Required
 
@@ -16,7 +16,11 @@ Use the factory ESP-IDF version in the [development environment](../../README.md
 
 ## Expected Result
 
-The desktop opens with Settings first and AIChats second; tap an icon to open an application. Settings provides brightness, volume, Wi-Fi scanning/setup and SD information; place JPEG photos in `/photo` and MP3 audio in `/music` at the SD-card root.
+The desktop opens with 12 applications, with Settings first and AIChats second; tap an icon to open an application. The backlight stays off until the first desktop frame has been transferred. Settings provides brightness, volume, Wi-Fi scanning/setup and SD information; place JPEG photos in `/photo` and MP3 audio in `/music` at the SD-card root.
+
+Short press PWR once to power on; press and hold PWR for 5 seconds to power off. Use short presses when checking PWR in Button Test.
+
+For application controls and Wi-Fi setup, see the [user guide](USER_GUIDE.md).
 
 ## Troubleshooting
 

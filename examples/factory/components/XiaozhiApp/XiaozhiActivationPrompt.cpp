@@ -1,3 +1,4 @@
+#include "bsp_board_extra.h"
 /*
  * SPDX-FileCopyrightText: 2026 Waveshare
  *
@@ -193,7 +194,7 @@ bool XiaozhiActivationPrompt::shouldContinue() const
 bool XiaozhiActivationPrompt::releaseAudioSession()
 {
     if (_codec_claimed.load()) {
-        const esp_err_t stop_result = bsp_audio_voice_close();
+        const esp_err_t stop_result = bsp_extra_codec_dev_stop();
         if (stop_result != ESP_OK) {
             ESP_UTILS_LOGE("Prompt codec shutdown failed: %s", esp_err_to_name(stop_result));
             return false;
@@ -202,7 +203,7 @@ bool XiaozhiActivationPrompt::releaseAudioSession()
     }
     if (_audio_session_acquired.load()) {
         const esp_err_t release_result =
-            bsp_audio_session_release(BSP_AUDIO_OWNER_XIAOZHI);
+            bsp_extra_audio_session_release(BSP_EXTRA_AUDIO_OWNER_XIAOZHI);
         if (release_result != ESP_OK) {
             ESP_UTILS_LOGE("Prompt audio-session release failed: %s",
                            esp_err_to_name(release_result));
@@ -239,21 +240,21 @@ void XiaozhiActivationPrompt::run()
         goto cleanup;
     }
 
-    codec_result = bsp_audio_session_acquire(BSP_AUDIO_OWNER_XIAOZHI);
+    codec_result = bsp_extra_audio_session_acquire(BSP_EXTRA_AUDIO_OWNER_XIAOZHI);
     if (codec_result != ESP_OK) {
         ESP_UTILS_LOGW(
             "Activation prompt audio is busy (%s)",
-            bsp_audio_owner_name(bsp_audio_session_get_owner())
+            bsp_extra_audio_owner_name(bsp_extra_audio_session_get_owner())
         );
         goto cleanup;
     }
     _audio_session_acquired.store(true);
-    codec_result = bsp_audio_voice_open(SAMPLE_RATE, false);
+    codec_result = bsp_extra_codec_set_voice_fs(SAMPLE_RATE, 16, 2, 3, 1);
     if (codec_result == ESP_OK) {
         _codec_claimed.store(true);
     }
     if (codec_result == ESP_OK && shouldContinue()) {
-        bsp_audio_voice_mute(false);
+        bsp_extra_codec_mute_set(false);
     }
     if (!shouldContinue()) {
         goto cleanup;
@@ -338,7 +339,7 @@ void XiaozhiActivationPrompt::run()
 
                     size_t bytes_written = 0;
                     size_t stereo_size = sample_count * 2 * sizeof(int16_t);
-                    if (bsp_audio_voice_write(
+                    if (bsp_extra_i2s_write(
                             stereo_pcm,
                             stereo_size,
                             &bytes_written,
@@ -387,7 +388,7 @@ cleanup:
     free(mono_pcm);
 
     if (_codec_claimed.load() && codec_result == ESP_OK) {
-        bsp_audio_voice_mute(true);
+        bsp_extra_codec_mute_set(true);
     }
     if (!releaseAudioSession()) {
         ESP_UTILS_LOGE("Activation prompt retained the audio session after cleanup failure");

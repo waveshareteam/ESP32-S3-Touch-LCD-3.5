@@ -264,6 +264,20 @@ esp_err_t esp_lcd_touch_ft6336_set_gesture_enabled(esp_lcd_touch_handle_t tp, bo
     return touch_ft6336_i2c_write(tp, TOUCH_FT6336_GESTURE_ENABLE_REG, enabled ? 0x01 : 0x00);
 }
 
+esp_err_t esp_lcd_touch_ft6336_clear_gesture(esp_lcd_touch_handle_t tp)
+{
+    ESP_RETURN_ON_FALSE(tp != NULL, ESP_ERR_INVALID_ARG, TAG, "Invalid argument");
+    ESP_RETURN_ON_ERROR(touch_ft6336_i2c_write(tp, TOUCH_FT6336_GESTURE_ID_REG, 0x00),
+                        TAG, "Gesture ID clear failed");
+    uint8_t gesture_id = 0xff;
+    ESP_RETURN_ON_ERROR(touch_ft6336_i2c_read(tp, TOUCH_FT6336_GESTURE_ID_REG, &gesture_id, 1),
+                        TAG, "Gesture ID clear readback failed");
+    ESP_RETURN_ON_FALSE(gesture_id == ESP_LCD_TOUCH_FT6336_GESTURE_NONE,
+                        ESP_ERR_INVALID_RESPONSE, TAG,
+                        "Gesture ID clear not confirmed: 0xD3=0x%02X", gesture_id);
+    return ESP_OK;
+}
+
 
 static esp_err_t touch_ft6336_init(esp_lcd_touch_handle_t tp)
 {

@@ -11,167 +11,123 @@
 #include "esp_lcd_touch.h"
 #include "esp_camera.h"
 #include "lvgl.h"
+#include "driver/i2s_std.h"
+#include "esp_codec_dev.h"
+#include "esp_lvgl_port.h"
+#include "bsp/config.h"
+#include "bsp/display.h"
+#include "bsp/touch.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Physical pins come from the 3.5-inch 260911 factory project. */
+/* Board pin assignments. GPIO_NUM_NC means no dedicated MCU GPIO is assigned. */
+
+/* Shared I2C: TCA9554 IO expander, AXP2101 PMU, PCF85063 RTC, QMI8658 IMU,
+ * FT6336 touch, ES8311 audio codec and camera SCCB control. */
 #define BSP_I2C_NUM             I2C_NUM_0
-#define BSP_I2C_SDA             GPIO_NUM_8
-#define BSP_I2C_SCL             GPIO_NUM_7
+#define BSP_I2C_SDA             GPIO_NUM_8  /* Shared serial data */
+#define BSP_I2C_SCL             GPIO_NUM_7  /* Shared serial clock */
 #define BSP_I2C_FREQ_HZ         400000
-#define BSP_LCD_H_RES           320
-#define BSP_LCD_V_RES           480
+
+/* ST7796 LCD: SPI pixel/command interface and PWM backlight. */
 #define BSP_LCD_SPI_HOST        SPI2_HOST
-#define BSP_LCD_MOSI            GPIO_NUM_1
-#define BSP_LCD_SCLK            GPIO_NUM_5
-#define BSP_LCD_DC              GPIO_NUM_3
+#define BSP_LCD_MOSI            GPIO_NUM_1  /* MCU -> LCD data */
+#define BSP_LCD_SCLK            GPIO_NUM_5  /* SPI clock */
+#define BSP_LCD_DC              GPIO_NUM_3  /* Data/command selection */
 #define BSP_LCD_CS              GPIO_NUM_NC
 #define BSP_LCD_RST             GPIO_NUM_NC
-#define BSP_LCD_BACKLIGHT       GPIO_NUM_6
+#define BSP_LCD_BACKLIGHT       GPIO_NUM_6  /* Backlight PWM output */
+
+/* FT6336 capacitive touch: coordinates are read on the shared I2C bus. */
 #define BSP_TOUCH_RST           GPIO_NUM_NC
 #define BSP_TOUCH_INT           GPIO_NUM_NC
+
+/* BOOT button: active-low input. */
 #define BSP_BUTTON_BOOT         GPIO_NUM_0
-#define BSP_SD_CLK              GPIO_NUM_11
-#define BSP_SD_CMD              GPIO_NUM_10
-#define BSP_SD_D0               GPIO_NUM_9
+
+/* PWR button: PWRON -> inverter -> SYS_OUT -> TCA9554 EXIO6.
+ * This is an expander pin mask, not an ESP32 GPIO; high means pressed. */
+#define BSP_BUTTON_PWR_EXIO     (1U << 6)
+
+/* MicroSD card: independent 1-bit SDMMC interface. */
+#define BSP_SD_CLK              GPIO_NUM_11 /* SDMMC clock */
+#define BSP_SD_CMD              GPIO_NUM_10 /* SDMMC command */
+#define BSP_SD_D0               GPIO_NUM_9  /* SDMMC data bit 0 */
 #define BSP_SD_MOUNT_POINT      "/sdcard"
-#define BSP_I2S_MCLK            GPIO_NUM_12
-#define BSP_I2S_BCLK            GPIO_NUM_13
-#define BSP_I2S_LRCLK           GPIO_NUM_15
-#define BSP_I2S_DOUT            GPIO_NUM_16
-#define BSP_I2S_DIN             GPIO_NUM_14
-#define BSP_AUDIO_PA            GPIO_NUM_NC
-#define BSP_CAMERA_XCLK         GPIO_NUM_38
-#define BSP_CAMERA_PCLK         GPIO_NUM_41
-#define BSP_CAMERA_VSYNC        GPIO_NUM_17
-#define BSP_CAMERA_HREF         GPIO_NUM_18
-#define BSP_CAMERA_D0           GPIO_NUM_45
-#define BSP_CAMERA_D1           GPIO_NUM_47
-#define BSP_CAMERA_D2           GPIO_NUM_48
-#define BSP_CAMERA_D3           GPIO_NUM_46
-#define BSP_CAMERA_D4           GPIO_NUM_42
-#define BSP_CAMERA_D5           GPIO_NUM_40
-#define BSP_CAMERA_D6           GPIO_NUM_39
-#define BSP_CAMERA_D7           GPIO_NUM_21
+
+/* ES8311 audio codec: I2S clocks, speaker output and microphone input.
+ * DOUT/DIN directions are relative to the MCU. */
+#define BSP_I2S_MCLK            GPIO_NUM_12 /* MCU -> codec master clock */
+#define BSP_I2S_BCLK            GPIO_NUM_13 /* I2S bit clock */
+#define BSP_I2S_LRCLK           GPIO_NUM_15 /* I2S left/right word clock */
+#define BSP_I2S_DOUT            GPIO_NUM_16 /* MCU -> codec playback data */
+#define BSP_I2S_DIN             GPIO_NUM_14 /* Codec -> MCU microphone data */
+#define BSP_AUDIO_PA            GPIO_NUM_NC /* No dedicated MCU PA-enable pin */
+
+/* DVP camera: SCCB control uses the shared I2C bus above. */
+#define BSP_CAMERA_XCLK         GPIO_NUM_38 /* MCU -> camera reference clock */
+#define BSP_CAMERA_PCLK         GPIO_NUM_41 /* Camera -> MCU pixel clock */
+#define BSP_CAMERA_VSYNC        GPIO_NUM_17 /* Frame synchronization */
+#define BSP_CAMERA_HREF         GPIO_NUM_18 /* Line data-valid signal */
+#define BSP_CAMERA_D0           GPIO_NUM_45 /* Parallel pixel data bit 0 */
+#define BSP_CAMERA_D1           GPIO_NUM_47 /* Parallel pixel data bit 1 */
+#define BSP_CAMERA_D2           GPIO_NUM_48 /* Parallel pixel data bit 2 */
+#define BSP_CAMERA_D3           GPIO_NUM_46 /* Parallel pixel data bit 3 */
+#define BSP_CAMERA_D4           GPIO_NUM_42 /* Parallel pixel data bit 4 */
+#define BSP_CAMERA_D5           GPIO_NUM_40 /* Parallel pixel data bit 5 */
+#define BSP_CAMERA_D6           GPIO_NUM_39 /* Parallel pixel data bit 6 */
+#define BSP_CAMERA_D7           GPIO_NUM_21 /* Parallel pixel data bit 7 */
+
+#define BSP_CAPS_DISPLAY 1
+#define BSP_CAPS_TOUCH 1
+#define BSP_CAPS_BUTTONS 1
+#define BSP_CAPS_AUDIO 1
+#define BSP_CAPS_AUDIO_SPEAKER 1
+#define BSP_CAPS_AUDIO_MIC 1
+#define BSP_CAPS_SDCARD 1
+#define BSP_CAPS_IMU 1
+#define BSP_CAPS_CAMERA 1
+
+esp_err_t bsp_i2c_init(void);
+esp_err_t bsp_i2c_deinit(void);
+i2c_master_bus_handle_t bsp_i2c_get_handle(void);
+
+/**************************************************************************************************
+ * I2S audio interface. Handles are BSP-owned; stop all users before deinit.
+ **************************************************************************************************/
+#define BSP_AUDIO_DMA_DESCRIPTORS 6
+#define BSP_AUDIO_DMA_FRAMES 240
+esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config);
+esp_err_t bsp_audio_init_voice_24k(void);
+esp_err_t bsp_audio_deinit(void);
+esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void);
+esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void);
+/* Bounded I2S access for full-duplex voice, after opening the shared codec. */
+esp_err_t bsp_audio_i2s_read(void *data, size_t size, size_t *read, uint32_t timeout_ms);
+esp_err_t bsp_audio_i2s_write(void *data, size_t size, size_t *written, uint32_t timeout_ms);
 
 typedef struct {
-    esp_err_t i2c, expander, power, display, touch;
-    esp_err_t button, audio, rtc, imu, sdcard, camera, wifi;
-} bsp_init_status_t;
-
-/* Call once from app_main before starting APPs. Required power/display errors
- * are returned; optional peripheral failures are logged and stored in status. */
-esp_err_t bsp_init(void);
-const bsp_init_status_t *bsp_get_init_status(void);
-esp_err_t bsp_i2c_init(void);
-i2c_master_bus_handle_t bsp_i2c_get_handle(void);
-esp_err_t bsp_io_expander_init(void);
-esp_err_t bsp_io_expander_read_input(bool *high);
-esp_err_t bsp_power_init(void);
+    lvgl_port_cfg_t lvgl_port_cfg;
+    uint32_t buffer_size;
+    uint32_t trans_size;
+    bool double_buffer;
+    struct {
+        unsigned int buff_dma: 1;
+        unsigned int buff_spiram: 1;
+    } flags;
+} bsp_display_cfg_t;
 
 lv_display_t *bsp_display_start(void);
-lv_display_t *bsp_display_get(void);
+lv_display_t *bsp_display_start_with_config(const bsp_display_cfg_t *cfg);
 lv_indev_t *bsp_display_get_input_dev(void);
-esp_lcd_touch_handle_t bsp_touch_get_handle(void);
-/* Same APP-facing convention as RLCD: bool success, 0 waits indefinitely. */
 bool bsp_display_lock(uint32_t timeout_ms);
 void bsp_display_unlock(void);
-esp_err_t bsp_display_brightness_set(int percent);
-int bsp_display_brightness_get(void);
-esp_err_t bsp_user_button_init(void);
-uint32_t bsp_user_button_get_press_count(void);
-
-typedef struct {
-    bool connected, charging, vbus_present;
-    uint16_t voltage_mv;
-    int percentage;
-} bsp_battery_info_t;
-esp_err_t bsp_battery_get_info(bsp_battery_info_t *info);
-
-typedef struct {
-    uint16_t year;
-    uint8_t month, day, hour, minute, second, weekday;
-} bsp_sensor_datetime_t;
-typedef struct {
-    float accel_x, accel_y, accel_z; /* g */
-    float gyro_x, gyro_y, gyro_z;    /* degrees/second */
-    float temperature_c;
-} bsp_imu_data_t;
-esp_err_t bsp_rtc_init(void);
-esp_err_t bsp_rtc_get_datetime(bsp_sensor_datetime_t *datetime);
-esp_err_t bsp_rtc_set_datetime(const bsp_sensor_datetime_t *datetime);
-esp_err_t bsp_imu_init(void);
-esp_err_t bsp_imu_get_data(bsp_imu_data_t *data);
-
-typedef struct {
-    bool mounted;
-    uint64_t capacity_bytes, total_bytes, free_bytes;
-} bsp_sdcard_info_t;
-esp_err_t bsp_sdcard_mount(void);
-/* Active APPs acquire/release a lease so Settings cannot unmount an in-use card. */
-esp_err_t bsp_sdcard_acquire(void);
-void bsp_sdcard_release(void);
-esp_err_t bsp_sdcard_unmount(void);
-esp_err_t bsp_sdcard_get_info(bsp_sdcard_info_t *info);
-
-/* Idempotent, serialized initialization. Camera/AI workers may call it again
- * after a boot-time failure; successful initialization is reused. */
-esp_err_t bsp_camera_init(void);
-camera_fb_t *bsp_camera_get_frame(void);
-void bsp_camera_return_frame(camera_fb_t *frame);
-/* Toggle both sensor mirror axes, rotating the image 180 degrees.
- * Call from the camera worker between frames, not from a button/LVGL callback. */
-esp_err_t bsp_camera_rotate_180(void);
-bool bsp_camera_acquire(uint32_t timeout_ms);
-void bsp_camera_release(void);
-/* Fresh JPEG for AI; caller owns the returned buffer and frees it with free(). */
-esp_err_t bsp_camera_capture_jpeg(uint8_t **jpeg, size_t *size);
-/* Optional short preview at <=5 fps, followed by the exact RGB565 snapshot
- * used for JPEG encoding (final_frame=true). Frames are borrowed only during
- * the callback; copy what is needed and never call LVGL from the callback.
- * Return false to cancel. A null frame is a cancellation check only.
- * The camera lock/framebuffer is released before encoding and network I/O. */
-typedef bool (*bsp_camera_preview_cb_t)(const camera_fb_t *frame, bool final_frame, void *context);
-esp_err_t bsp_camera_capture_jpeg_with_preview(uint8_t **jpeg, size_t *size,
-                                             bsp_camera_preview_cb_t preview, void *context);
-
-/* ES8311 is one shared full-duplex codec, not an ES7210 echo-reference array.
- * One task acquires, opens, reads/writes, closes and releases a session.
- * Volume can be changed from another task; init does not play audio. */
-esp_err_t bsp_audio_init(void);
-bool bsp_audio_acquire(uint32_t timeout_ms);
-void bsp_audio_release(void);
-esp_err_t bsp_audio_open(uint32_t sample_rate, uint8_t channels);
-esp_err_t bsp_audio_close(void);
-esp_err_t bsp_audio_write(const void *data, size_t size);
-/* Push silence through the complete TX ring before pausing/closing playback. */
-esp_err_t bsp_audio_drain(void);
-esp_err_t bsp_audio_read(void *data, size_t size);
-esp_err_t bsp_audio_volume_set(int percent);
-int bsp_audio_volume_get(void);
-
-/* One shared ES8311. Ordinary APPs use the task-owned API above; Xiaozhi
- * holds one session across its control/input/playback tasks. Stop/join all
- * voice tasks before close/release. RX slots contain one physical microphone. */
-typedef enum { BSP_AUDIO_OWNER_NONE, BSP_AUDIO_OWNER_APP, BSP_AUDIO_OWNER_XIAOZHI } bsp_audio_owner_t;
-bsp_audio_owner_t bsp_audio_session_get_owner(void);
-const char *bsp_audio_owner_name(bsp_audio_owner_t owner);
-esp_err_t bsp_audio_session_acquire(bsp_audio_owner_t owner);
-esp_err_t bsp_audio_session_release(bsp_audio_owner_t owner);
-#define BSP_AUDIO_VOICE_CHANNELS 2
-esp_err_t bsp_audio_voice_open(uint32_t sample_rate, bool capture);
-esp_err_t bsp_audio_voice_read(void *pcm, size_t bytes, size_t *read, uint32_t timeout_ms);
-esp_err_t bsp_audio_voice_write(void *pcm, size_t bytes, size_t *written, uint32_t timeout_ms);
-esp_err_t bsp_audio_voice_mute(bool mute);
-esp_err_t bsp_audio_voice_close(void);
-
-/* Driver/netif initialization only. Credentials/scan/provisioning belong to APPs. */
-esp_err_t bsp_wifi_init(void);
-/* Start the initialized radio for scanning/provisioning. Does not connect. */
-esp_err_t bsp_wifi_start(void);
+void bsp_display_rotate(lv_display_t *disp, lv_disp_rotation_t rotation);
 
 #ifdef __cplusplus
 }
 #endif
+
+#include "bsp/board.h"

@@ -4,6 +4,7 @@
 
 | File | Purpose |
 | --- | --- |
+| [ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin](ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin) | 12-application factory desktop with Button Test, Display Test and backlight enabled after the first frame; ESP-IDF v5.5.4 |
 | [ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261020.bin](ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261020.bin) | V1.0 application desktop, LVGL 9, AIChats and camera; ESP-IDF v5.5.4 |
 | [ESP32-S3-Touch-LCD-3.5_FactoryOnly_20250421.bin](ESP32-S3-Touch-LCD-3.5_FactoryOnly_20250421.bin) | Original factory demonstration; build date 2025-04-21, ESP-IDF v5.4 |
 
@@ -11,7 +12,7 @@ These files are merged images flashed at **0x0**; select the date or version mat
 
 ```bash
 python -m pip install esptool
-python -m esptool --chip esp32s3 --port PORT write_flash 0x0 ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261020.bin
+python -m esptool --chip esp32s3 --port PORT write_flash 0x0 ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin
 ```
 
 Replace `PORT` with your serial port, such as `COMx` or `/dev/ttyACMx`, and run from this directory. Flashing replaces the firmware; retain any device settings you need before restoring it.

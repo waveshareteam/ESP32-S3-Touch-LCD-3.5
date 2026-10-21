@@ -57,7 +57,7 @@ Enclosure variants are separate from V1/V2 PCB revisions: use the schematic matc
 4. Reset the board and prepare the SD card, speaker or camera described by the selected example.
 5. To modify the program, choose an example below and build from its directory.
 
-Factory firmware is available in [firmware/](firmware/), including the current application desktop and the original demonstration. Current source is in [examples/factory/](examples/factory/); legacy source is in [01_factory](examples/esp-idf/01_factory/).
+The latest factory merged image is available in [firmware/](firmware/). Current source is in [examples/factory/](examples/factory/); legacy source is retained in [01_factory](examples/esp-idf/01_factory/) for reference.
 
 ## 🧪 Examples
 
@@ -97,7 +97,7 @@ The sketches share the [bundled libraries](examples/arduino/libraries/). Keep ea
 
 ### Factory demonstration
 
-[factory](examples/factory/) provides an LVGL 9 application desktop: Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera and Mic Test. Settings and AIChats appear first; board initialization is centralized in the BSP.
+[factory](examples/factory/) provides 12 applications: Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera, Mic Test, Button Test and Display Test. For Wi-Fi setup and application controls, see the [user guide](examples/factory/USER_GUIDE.md).
 
 <a id="development-environment"></a>
 

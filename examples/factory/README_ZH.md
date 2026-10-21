@@ -1,10 +1,10 @@
-# factory — 应用桌面
+# 出厂应用工程
 
 [English](README.md) | [简体中文](README_ZH.md)
 
 ## 功能
 
-运行 320 × 480 竖屏桌面，包含 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera、Mic Test、Button Test 和 Display Test。外设由 BSP 初始化，应用使用 LVGL 9.6 与 Brookesia 生命周期封装。
+提供 320 × 480 竖屏桌面，包含 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera、Mic Test、Button Test 和 Display Test，共 12 个应用。
 
 ## 硬件需求
 
@@ -12,11 +12,11 @@
 
 ## 怎么运行
 
-使用[开发环境](../../README_ZH.md#development-environment)中列出的出厂工程 ESP-IDF 版本，依次执行 `idf.py set-target esp32s3`、`idf.py build`、`idf.py -p PORT flash monitor`。工程内置原有天气 API 配置，可按需在 `idf.py menuconfig` → **S3 3.5 Weather** 修改账号及地区。
+恢复出厂软件请参照[固件烧录说明](../../firmware/README_ZH.md)。从源码编译时，请按[开发环境](../../README_ZH.md#development-environment)配置 ESP-IDF v5.5.4，在本目录依次执行 `idf.py set-target esp32s3`、`idf.py build`、`idf.py -p PORT flash monitor`，将 `PORT` 替换为设备的实际串口。
 
 ## 预期现象
 
-启动后显示 12 个应用，Settings 位于第一、AIChats 位于第二，点击图标进入应用。启动时保持背光关闭，桌面首帧传输完成后再点亮。设置中可调背光和音量、扫描或配置 Wi-Fi、查看 SD 信息；JPEG 图片和 MP3 音频分别放入 SD 卡根目录的 `/photo`、`/music` 文件夹。
+启动后显示 12 个应用，Settings 位于第一、AIChats 位于第二，点击图标进入应用。启动完成后，屏幕亮起并显示桌面。设置中可调背光和音量、扫描或配置 Wi-Fi、查看 SD 信息；JPEG 图片和 MP3 音频分别放入 SD 卡根目录的 `/photo`、`/music` 文件夹。
 
 短按 PWR 按键一次开机，长按 5 秒关机。在 Button Test 中测试 PWR 时请短按。
 
@@ -24,4 +24,4 @@
 
 ## 常见问题
 
-联网优先使用已保存的账号，否则使用 [wifi_manager.h](components/network_service/wifi_manager.h) 中的演示网络；其他网络通过 **Settings → Wi-Fi setup** 配置，扫描屏幕二维码或连接其热点后访问 `http://192.168.4.1`。天气使用内置的 `cn.apihz.cn` API 配置；AIChats 需要联网激活，首次烧录须使用完整的 `idf.py flash`，包含 `0x810000` 处的语音模型，不能仅烧录应用。
+天气和 AIChats 需要能够访问互联网，AIChats 需按屏幕提示完成激活。若提示缺少语音模型，请烧录完整出厂固件或执行完整的 `idf.py flash`，不要只烧录应用；其他问题请参照[使用说明](USER_GUIDE_ZH.md#常见问题)。

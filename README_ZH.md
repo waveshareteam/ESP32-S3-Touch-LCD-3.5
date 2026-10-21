@@ -57,7 +57,7 @@ ESP32-S3-Touch-LCD-3.5 将 ESP32-S3、3.5 英寸 IPS 电容触摸屏、电源管
 4. 复位开发板，按所选示例的 README 准备 SD 卡、扬声器或摄像头。
 5. 需要修改程序时，选择下方示例，在对应目录编译和烧录。
 
-出厂固件位于 [firmware/](firmware/)，保留新版应用桌面与旧版综合演示。新版源码位于 [examples/factory/](examples/factory/README_ZH.md)，旧版源码位于 [01_factory](examples/esp-idf/01_factory/README_ZH.md)。
+最新版出厂合并固件位于 [firmware/](firmware/)。新版源码位于 [examples/factory/](examples/factory/README_ZH.md)，旧版源码保留在 [01_factory](examples/esp-idf/01_factory/README_ZH.md) 供参考。
 
 ## 🧪 示例
 
@@ -97,7 +97,7 @@ Arduino 所需库集中放在 [examples/arduino/libraries/](examples/arduino/lib
 
 ### 出厂演示
 
-[factory](examples/factory/README_ZH.md) 使用 LVGL 9 应用桌面，包含 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera 和 Mic Test。Settings 与 AIChats 排在前两位，板级初始化集中由 BSP 完成。
+[factory](examples/factory/README_ZH.md) 提供 Settings、AIChats、Touch Test、Photos、Weather、Music、Sensor、2048、Camera、Mic Test、Button Test 和 Display Test，共 12 个应用。配网步骤和应用操作请参照[使用说明](examples/factory/USER_GUIDE_ZH.md)。
 
 <a id="development-environment"></a>
 

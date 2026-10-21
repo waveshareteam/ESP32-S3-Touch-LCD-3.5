@@ -128,7 +128,7 @@ esp_err_t bsp_io_expander_init(void)
     }
     ESP_RETURN_ON_ERROR(esp_io_expander_set_dir(expander, IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_7,
                                               IO_EXPANDER_OUTPUT), TAG, "EXIO outputs");
-    ESP_RETURN_ON_ERROR(esp_io_expander_set_dir(expander, IO_EXPANDER_PIN_NUM_6,
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_dir(expander, BSP_BUTTON_PWR_EXIO,
                                               IO_EXPANDER_INPUT), TAG, "EXIO input");
     ESP_RETURN_ON_ERROR(esp_io_expander_set_level(expander, IO_EXPANDER_PIN_NUM_1, 0), TAG, "EXIO low");
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -144,8 +144,8 @@ esp_err_t bsp_io_expander_read_input(bool *high)
     if (!high) return ESP_ERR_INVALID_ARG;
     if (!expander_ready) return ESP_ERR_INVALID_STATE;
     uint32_t level = 0;
-    esp_err_t ret = esp_io_expander_get_level(expander, IO_EXPANDER_PIN_NUM_6, &level);
-    if (ret == ESP_OK) *high = (level & IO_EXPANDER_PIN_NUM_6) != 0;
+    esp_err_t ret = esp_io_expander_get_level(expander, BSP_BUTTON_PWR_EXIO, &level);
+    if (ret == ESP_OK) *high = (level & BSP_BUTTON_PWR_EXIO) != 0;
     return ret;
 }
 
@@ -291,6 +291,29 @@ esp_err_t bsp_user_button_init(void)
     return ret;
 }
 uint32_t bsp_user_button_get_press_count(void) { return button_presses.load(); }
+
+esp_err_t bsp_button_get_pressed(bsp_button_id_t button, bool *pressed)
+{
+    if (!pressed) return ESP_ERR_INVALID_ARG;
+    switch (button) {
+    case BSP_BUTTON_ID_BOOT:
+        if (!boot_button) return ESP_ERR_INVALID_STATE;
+        *pressed = gpio_get_level(BSP_BUTTON_BOOT) == 0;
+        return ESP_OK;
+    case BSP_BUTTON_ID_PWR: {
+        if (!sensor_mutex || !expander_ready) return ESP_ERR_INVALID_STATE;
+        if (xSemaphoreTakeRecursive(sensor_mutex, pdMS_TO_TICKS(20)) != pdTRUE) {
+            return ESP_ERR_TIMEOUT;
+        }
+        // SYS_OUT is inverted by T3: pressing PWR drives EXIO6 high.
+        esp_err_t ret = bsp_io_expander_read_input(pressed);
+        xSemaphoreGiveRecursive(sensor_mutex);
+        return ret;
+    }
+    default:
+        return ESP_ERR_INVALID_ARG;
+    }
+}
 
 static bool valid_datetime(const bsp_sensor_datetime_t &d)
 {
@@ -666,6 +689,8 @@ esp_err_t bsp_wifi_start(void)
 
 esp_err_t bsp_init(void)
 {
+    // Hold the backlight off from the start of board initialization.
+    ESP_RETURN_ON_ERROR(bsp_display_brightness_init(), TAG, "Backlight initialization");
     esp_err_t ret = nvs_flash_init();
     // Preserve saved data on NVS incompatibility; report instead of silently erasing.
     ESP_RETURN_ON_ERROR(ret, TAG, "NVS initialization");

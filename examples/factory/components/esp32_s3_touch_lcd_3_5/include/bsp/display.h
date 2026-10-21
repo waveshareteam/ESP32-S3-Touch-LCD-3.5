@@ -59,8 +59,8 @@ esp_err_t bsp_display_new(const bsp_display_config_t *config, esp_lcd_panel_hand
 /**
  * @brief Initialize display's brightness
  *
- * PWM backlight starts at zero. Draw the initial screen before calling
- * bsp_display_backlight_on() or bsp_display_brightness_set() with a nonzero value.
+ * PWM backlight starts at zero. Initial brightness requests are remembered
+ * without lighting the panel until bsp_display_show() presents the initial UI.
  *
  * @return
  *      - ESP_OK                On success
@@ -69,10 +69,11 @@ esp_err_t bsp_display_new(const bsp_display_config_t *config, esp_lcd_panel_hand
 esp_err_t bsp_display_brightness_init(void);
 
 /**
- * @brief Set display's brightness
+ * @brief Set display's desired brightness
  *
  * Brightness is controlled by the LEDC PWM backlight output.
  * Brightness must be already initialized by calling bsp_display_brightness_init() or bsp_display_new()
+ * Before the first bsp_display_show(), the value is saved while PWM stays off.
  *
  * @param[in] brightness_percent Brightness in [%]
  * @return
@@ -84,10 +85,19 @@ esp_err_t bsp_display_brightness_set(int brightness_percent);
 int bsp_display_brightness_get(void);
 
 /**
+ * @brief Draw the active LVGL screen, wait for SPI DMA, then release backlight
+ *
+ * Call after creating the desktop. Uses the desired brightness, including any
+ * saved setting restored during boot. Acquires the LVGL lock internally.
+ */
+esp_err_t bsp_display_show(void);
+
+/**
  * @brief Turn on display backlight
  *
  * Brightness is controlled with PWM signal to a pin controlling backlight.
  * Brightness must be already initialized by calling bsp_display_brightness_init() or bsp_display_new()
+ * During boot, bsp_display_show() must release the initial backlight hold.
  *
  * @return
  *      - ESP_OK                On success

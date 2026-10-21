@@ -20,10 +20,14 @@ static i2c_master_bus_handle_t i2c_bus;
 static esp_lcd_panel_io_handle_t lcd_io, touch_io;
 static esp_lcd_panel_handle_t panel;
 static esp_lcd_touch_handle_t touch;
+static uint8_t last_touch_gesture = 0xff;
 static lv_display_t *display;
 static lv_indev_t *input;
 static bool backlight_ready, display_started, port_initialized;
-static int brightness;
+// Settings may restore the desired brightness before the desktop is drawn.
+// Keep the PWM off until bsp_display_show() has flushed the first UI frame.
+static bool backlight_released;
+static int brightness = CONFIG_BSP_LCD_BRIGHTNESS;
 static SemaphoreHandle_t sd_mutex;
 static sdmmc_card_t *sdcard;
 static unsigned sd_leases;
@@ -274,6 +278,9 @@ esp_err_t bsp_audio_i2s_write(void *data, size_t size, size_t *written, uint32_t
 esp_err_t bsp_display_brightness_init(void)
 {
     if (backlight_ready) return ESP_OK;
+    // Drive BL low before LCD reset or power configuration can expose blank GRAM.
+    ESP_RETURN_ON_ERROR(gpio_set_level(BSP_LCD_BACKLIGHT, 0), TAG, "Backlight off level");
+    ESP_RETURN_ON_ERROR(gpio_set_direction(BSP_LCD_BACKLIGHT, GPIO_MODE_OUTPUT), TAG, "Backlight off GPIO");
     ledc_timer_config_t timer = {};
     timer.speed_mode = LEDC_LOW_SPEED_MODE;
     timer.duty_resolution = LEDC_TIMER_10_BIT;
@@ -286,6 +293,7 @@ esp_err_t bsp_display_brightness_init(void)
     channel.speed_mode = LEDC_LOW_SPEED_MODE;
     channel.channel = LEDC_CHANNEL_1; // Camera XCLK owns channel 0, timer 0.
     channel.timer_sel = LEDC_TIMER_1;
+    channel.duty = 0;
     ESP_RETURN_ON_ERROR(ledc_channel_config(&channel), TAG, "Backlight PWM");
     backlight_ready = true;
     return ESP_OK;
@@ -295,7 +303,8 @@ esp_err_t bsp_display_brightness_set(int percent)
 {
     if (percent < 0 || percent > 100) return ESP_ERR_INVALID_ARG;
     if (!backlight_ready) return ESP_ERR_INVALID_STATE;
-    ESP_RETURN_ON_ERROR(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, percent * 1023 / 100), TAG, "Backlight duty");
+    const int duty = backlight_released ? percent * 1023 / 100 : 0;
+    ESP_RETURN_ON_ERROR(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, duty), TAG, "Backlight duty");
     ESP_RETURN_ON_ERROR(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1), TAG, "Backlight update");
     brightness = percent;
     return ESP_OK;
@@ -305,6 +314,28 @@ int bsp_display_brightness_get(void) { return brightness; }
 
 esp_err_t bsp_display_backlight_off(void) { return bsp_display_brightness_set(0); }
 esp_err_t bsp_display_backlight_on(void) { return bsp_display_brightness_set(CONFIG_BSP_LCD_BRIGHTNESS); }
+
+esp_err_t bsp_display_show(void)
+{
+    if (!display_started || !display || !lcd_io) return ESP_ERR_INVALID_STATE;
+    if (!lvgl_port_lock(0)) return ESP_ERR_TIMEOUT;
+    // Refresh all pixels while dark. lv_refr_now() can return with the final
+    // SPI DMA transfer in flight, so drain it before releasing the backlight.
+    lv_obj_invalidate(lv_display_get_screen_active(display));
+    lv_refr_now(display);
+    // IDF's SPI tx_param drains queued color transfers even without a command.
+    esp_err_t ret = esp_lcd_panel_io_tx_param(lcd_io, -1, nullptr, 0);
+    if (ret == ESP_OK) {
+        backlight_released = true;
+        ret = bsp_display_brightness_set(brightness);
+        if (ret != ESP_OK) backlight_released = false;
+    }
+    lvgl_port_unlock();
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Initial UI frame flushed; backlight enabled at %d%%", brightness);
+    }
+    return ret;
+}
 
 esp_err_t bsp_display_new(const bsp_display_config_t *config, esp_lcd_panel_handle_t *ret_panel, esp_lcd_panel_io_handle_t *ret_io)
 {
@@ -316,10 +347,10 @@ esp_err_t bsp_display_new(const bsp_display_config_t *config, esp_lcd_panel_hand
     esp_lcd_panel_io_handle_t new_io = nullptr;
     bool bus_created = false;
     auto create = [&]() -> esp_err_t {
+        ESP_RETURN_ON_ERROR(bsp_display_brightness_init(), TAG, "Backlight");
         ESP_RETURN_ON_ERROR(bsp_i2c_init(), TAG, "I2C");
         ESP_RETURN_ON_ERROR(bsp_io_expander_init(), TAG, "Expander");
         ESP_RETURN_ON_ERROR(bsp_power_init(), TAG, "Power");
-        ESP_RETURN_ON_ERROR(bsp_display_brightness_init(), TAG, "Backlight");
         spi_bus_config_t bus = {};
         bus.sclk_io_num = BSP_LCD_SCLK;
         bus.mosi_io_num = BSP_LCD_MOSI;
@@ -408,6 +439,60 @@ esp_err_t bsp_touch_new(const bsp_touch_config_t *config, esp_lcd_touch_handle_t
     return ESP_OK;
 }
 
+esp_err_t bsp_touch_set_gesture_enabled(bool enabled)
+{
+    if (!touch) return ESP_ERR_INVALID_STATE;
+    if (enabled) {
+        // D0 off/on does not clear the last D3 result on this panel.
+        ESP_RETURN_ON_ERROR(esp_lcd_touch_ft6336_set_gesture_enabled(touch, false),
+                            TAG, "Reset touch gesture mode");
+        ESP_RETURN_ON_ERROR(esp_lcd_touch_ft6336_clear_gesture(touch),
+                            TAG, "Clear previous touch gesture before entry");
+    }
+    ESP_RETURN_ON_ERROR(esp_lcd_touch_ft6336_set_gesture_enabled(touch, enabled),
+                        TAG, "Touch gesture mode");
+    if (enabled) {
+        // Verify the result is still clear after enabling. Do not start an APP
+        // reader if the chip retained a previous double-click result.
+        const esp_err_t ret = esp_lcd_touch_ft6336_clear_gesture(touch);
+        if (ret != ESP_OK) {
+            esp_lcd_touch_ft6336_set_gesture_enabled(touch, false);
+            return ret;
+        }
+        ESP_LOGI(TAG, "Touch gesture cleared and verified: 0xD3=0x00");
+    }
+    last_touch_gesture = 0xff;
+    ESP_LOGI(TAG, "Touch hardware gesture mode %s (0xD0=%u)",
+             enabled ? "enabled" : "disabled", enabled ? 1U : 0U);
+    return ESP_OK;
+}
+
+esp_err_t bsp_touch_get_double_click(bool *detected)
+{
+    if (!detected) return ESP_ERR_INVALID_ARG;
+    *detected = false;
+    if (!touch) return ESP_ERR_INVALID_STATE;
+    esp_lcd_touch_ft6336_gesture_t gesture;
+    ESP_RETURN_ON_ERROR(esp_lcd_touch_ft6336_get_gesture(touch, &gesture),
+                        TAG, "Touch gesture read");
+    const uint8_t raw = static_cast<uint8_t>(gesture);
+    if (raw != last_touch_gesture) {
+        ESP_LOGI(TAG, "Touch gesture raw: 0xD3=0x%02X", static_cast<unsigned>(raw));
+        last_touch_gesture = raw;
+    }
+    if (gesture != ESP_LCD_TOUCH_FT6336_GESTURE_NONE) {
+        // Consume the hardware result once. A mode switch alone leaves D3
+        // latched and would replay this result the next time the APP opens.
+        ESP_RETURN_ON_ERROR(esp_lcd_touch_ft6336_clear_gesture(touch),
+                            TAG, "Acknowledge touch gesture");
+        if (gesture == ESP_LCD_TOUCH_FT6336_GESTURE_DOUBLE_CLICK) {
+            ESP_LOGI(TAG, "Double click consumed; 0xD3 cleared and verified");
+        }
+    }
+    *detected = gesture == ESP_LCD_TOUCH_FT6336_GESTURE_DOUBLE_CLICK;
+    return ESP_OK;
+}
+
 static lv_display_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
 {
     bsp_display_config_t panel_cfg = {};
@@ -455,6 +540,8 @@ lv_display_t *bsp_display_start_with_config(const bsp_display_cfg_t *cfg)
 {
     if (display_started) return display;
     if (!cfg || !cfg->buffer_size) return nullptr;
+    bsp_board_status.display = bsp_display_brightness_init();
+    if (bsp_board_status.display != ESP_OK) return nullptr;
     bsp_board_status.i2c = bsp_i2c_init();
     if (bsp_board_status.i2c != ESP_OK) return nullptr;
     bsp_board_status.expander = bsp_io_expander_init();
@@ -480,14 +567,15 @@ lv_display_t *bsp_display_start_with_config(const bsp_display_cfg_t *cfg)
     }
     bsp_board_status.display = esp_lcd_panel_disp_on_off(panel, true);
     if (bsp_board_status.display != ESP_OK) goto failed;
-    bsp_board_status.display = bsp_display_backlight_on();
-    if (bsp_board_status.display != ESP_OK) goto failed;
+    // app_main releases the backlight only after the desktop has been drawn.
     display_started = true;
     ESP_LOGI(TAG, "ST7796 %dx%d RGB565; LVGL %d.%d.%d, esp_lvgl_port, 2 DMA buffers",
              BSP_LCD_H_RES, BSP_LCD_V_RES, LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH);
     return display;
 failed:
     ESP_LOGE(TAG, "Display startup failed: %s", esp_err_to_name(bsp_board_status.display));
+    bsp_display_backlight_off();
+    backlight_released = false;
     if (input) { lvgl_port_remove_touch(input); input = nullptr; }
     if (display) { lvgl_port_remove_disp(display); display = nullptr; }
     if (port_initialized) { lvgl_port_deinit(); port_initialized = false; }

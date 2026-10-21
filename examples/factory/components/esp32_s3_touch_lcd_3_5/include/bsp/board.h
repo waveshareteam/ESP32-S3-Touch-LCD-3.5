@@ -23,6 +23,14 @@ esp_lcd_touch_handle_t bsp_touch_get_handle(void);
 esp_err_t bsp_user_button_init(void);
 uint32_t bsp_user_button_get_press_count(void);
 
+typedef enum {
+    BSP_BUTTON_ID_BOOT,
+    BSP_BUTTON_ID_PWR,
+} bsp_button_id_t;
+/* Normalized physical state: BOOT GPIO0 is active-low; PWR SYS_OUT on
+ * TCA9554 EXIO6 is active-high. Does not reconfigure pins or power-key timing. */
+esp_err_t bsp_button_get_pressed(bsp_button_id_t button, bool *pressed);
+
 typedef struct {
     bool connected, charging, vbus_present;
     uint16_t voltage_mv;

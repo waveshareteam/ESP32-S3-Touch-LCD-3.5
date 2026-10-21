@@ -22,43 +22,63 @@
 extern "C" {
 #endif
 
-/* Physical pins come from the 3.5-inch 260911 factory project. */
+/* Board pin assignments. GPIO_NUM_NC means no dedicated MCU GPIO is assigned. */
+
+/* Shared I2C: TCA9554 IO expander, AXP2101 PMU, PCF85063 RTC, QMI8658 IMU,
+ * FT6336 touch, ES8311 audio codec and camera SCCB control. */
 #define BSP_I2C_NUM             I2C_NUM_0
-#define BSP_I2C_SDA             GPIO_NUM_8
-#define BSP_I2C_SCL             GPIO_NUM_7
+#define BSP_I2C_SDA             GPIO_NUM_8  /* Shared serial data */
+#define BSP_I2C_SCL             GPIO_NUM_7  /* Shared serial clock */
 #define BSP_I2C_FREQ_HZ         400000
+
+/* ST7796 LCD: SPI pixel/command interface and PWM backlight. */
 #define BSP_LCD_SPI_HOST        SPI2_HOST
-#define BSP_LCD_MOSI            GPIO_NUM_1
-#define BSP_LCD_SCLK            GPIO_NUM_5
-#define BSP_LCD_DC              GPIO_NUM_3
+#define BSP_LCD_MOSI            GPIO_NUM_1  /* MCU -> LCD data */
+#define BSP_LCD_SCLK            GPIO_NUM_5  /* SPI clock */
+#define BSP_LCD_DC              GPIO_NUM_3  /* Data/command selection */
 #define BSP_LCD_CS              GPIO_NUM_NC
 #define BSP_LCD_RST             GPIO_NUM_NC
-#define BSP_LCD_BACKLIGHT       GPIO_NUM_6
+#define BSP_LCD_BACKLIGHT       GPIO_NUM_6  /* Backlight PWM output */
+
+/* FT6336 capacitive touch: coordinates are read on the shared I2C bus. */
 #define BSP_TOUCH_RST           GPIO_NUM_NC
 #define BSP_TOUCH_INT           GPIO_NUM_NC
+
+/* BOOT button: active-low input. */
 #define BSP_BUTTON_BOOT         GPIO_NUM_0
-#define BSP_SD_CLK              GPIO_NUM_11
-#define BSP_SD_CMD              GPIO_NUM_10
-#define BSP_SD_D0               GPIO_NUM_9
+
+/* PWR button: PWRON -> inverter -> SYS_OUT -> TCA9554 EXIO6.
+ * This is an expander pin mask, not an ESP32 GPIO; high means pressed. */
+#define BSP_BUTTON_PWR_EXIO     (1U << 6)
+
+/* MicroSD card: independent 1-bit SDMMC interface. */
+#define BSP_SD_CLK              GPIO_NUM_11 /* SDMMC clock */
+#define BSP_SD_CMD              GPIO_NUM_10 /* SDMMC command */
+#define BSP_SD_D0               GPIO_NUM_9  /* SDMMC data bit 0 */
 #define BSP_SD_MOUNT_POINT      "/sdcard"
-#define BSP_I2S_MCLK            GPIO_NUM_12
-#define BSP_I2S_BCLK            GPIO_NUM_13
-#define BSP_I2S_LRCLK           GPIO_NUM_15
-#define BSP_I2S_DOUT            GPIO_NUM_16
-#define BSP_I2S_DIN             GPIO_NUM_14
-#define BSP_AUDIO_PA            GPIO_NUM_NC
-#define BSP_CAMERA_XCLK         GPIO_NUM_38
-#define BSP_CAMERA_PCLK         GPIO_NUM_41
-#define BSP_CAMERA_VSYNC        GPIO_NUM_17
-#define BSP_CAMERA_HREF         GPIO_NUM_18
-#define BSP_CAMERA_D0           GPIO_NUM_45
-#define BSP_CAMERA_D1           GPIO_NUM_47
-#define BSP_CAMERA_D2           GPIO_NUM_48
-#define BSP_CAMERA_D3           GPIO_NUM_46
-#define BSP_CAMERA_D4           GPIO_NUM_42
-#define BSP_CAMERA_D5           GPIO_NUM_40
-#define BSP_CAMERA_D6           GPIO_NUM_39
-#define BSP_CAMERA_D7           GPIO_NUM_21
+
+/* ES8311 audio codec: I2S clocks, speaker output and microphone input.
+ * DOUT/DIN directions are relative to the MCU. */
+#define BSP_I2S_MCLK            GPIO_NUM_12 /* MCU -> codec master clock */
+#define BSP_I2S_BCLK            GPIO_NUM_13 /* I2S bit clock */
+#define BSP_I2S_LRCLK           GPIO_NUM_15 /* I2S left/right word clock */
+#define BSP_I2S_DOUT            GPIO_NUM_16 /* MCU -> codec playback data */
+#define BSP_I2S_DIN             GPIO_NUM_14 /* Codec -> MCU microphone data */
+#define BSP_AUDIO_PA            GPIO_NUM_NC /* No dedicated MCU PA-enable pin */
+
+/* DVP camera: SCCB control uses the shared I2C bus above. */
+#define BSP_CAMERA_XCLK         GPIO_NUM_38 /* MCU -> camera reference clock */
+#define BSP_CAMERA_PCLK         GPIO_NUM_41 /* Camera -> MCU pixel clock */
+#define BSP_CAMERA_VSYNC        GPIO_NUM_17 /* Frame synchronization */
+#define BSP_CAMERA_HREF         GPIO_NUM_18 /* Line data-valid signal */
+#define BSP_CAMERA_D0           GPIO_NUM_45 /* Parallel pixel data bit 0 */
+#define BSP_CAMERA_D1           GPIO_NUM_47 /* Parallel pixel data bit 1 */
+#define BSP_CAMERA_D2           GPIO_NUM_48 /* Parallel pixel data bit 2 */
+#define BSP_CAMERA_D3           GPIO_NUM_46 /* Parallel pixel data bit 3 */
+#define BSP_CAMERA_D4           GPIO_NUM_42 /* Parallel pixel data bit 4 */
+#define BSP_CAMERA_D5           GPIO_NUM_40 /* Parallel pixel data bit 5 */
+#define BSP_CAMERA_D6           GPIO_NUM_39 /* Parallel pixel data bit 6 */
+#define BSP_CAMERA_D7           GPIO_NUM_21 /* Parallel pixel data bit 7 */
 
 #define BSP_CAPS_DISPLAY 1
 #define BSP_CAPS_TOUCH 1

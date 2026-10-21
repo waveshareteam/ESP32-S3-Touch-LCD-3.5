@@ -1,10 +1,10 @@
-# factory — Application desktop
+# Factory application suite
 
 [English](README.md) | [简体中文](README_ZH.md)
 
 ## What It Does
 
-Runs a 320 × 480 portrait desktop with Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera, Mic Test, Button Test and Display Test. The BSP initializes the board peripherals; applications use LVGL 9.6 and the Brookesia lifecycle.
+Provides a 320 × 480 portrait desktop with 12 applications: Settings, AIChats, Touch Test, Photos, Weather, Music, Sensor, 2048, Camera, Mic Test, Button Test and Display Test.
 
 ## Hardware Required
 
@@ -12,11 +12,11 @@ Use ESP32-S3-Touch-LCD-3.5 or ESP32-S3-Touch-LCD-3.5-C and a USB data cable. Cam
 
 ## How to Run
 
-Use the factory ESP-IDF version in the [development environment](../../README.md#development-environment). Run `idf.py set-target esp32s3`, `idf.py build` and `idf.py -p PORT flash monitor`; the original weather API settings are included, and can be changed with the location under `idf.py menuconfig` → **S3 3.5 Weather**.
+To restore the factory software, follow the [firmware instructions](../../firmware/README.md). To build from source, use ESP-IDF v5.5.4 as described in the [development environment](../../README.md#development-environment), then run `idf.py set-target esp32s3`, `idf.py build` and `idf.py -p PORT flash monitor` from this directory; replace `PORT` with the board's serial port.
 
 ## Expected Result
 
-The desktop opens with 12 applications, with Settings first and AIChats second; tap an icon to open an application. The backlight stays off until the first desktop frame has been transferred. Settings provides brightness, volume, Wi-Fi scanning/setup and SD information; place JPEG photos in `/photo` and MP3 audio in `/music` at the SD-card root.
+The desktop opens with 12 applications, with Settings first and AIChats second; tap an icon to open an application. The screen lights up when the desktop is ready. Settings provides brightness, volume, Wi-Fi scanning/setup and SD information; place JPEG photos in `/photo` and MP3 audio in `/music` at the SD-card root.
 
 Short press PWR once to power on; press and hold PWR for 5 seconds to power off. Use short presses when checking PWR in Button Test.
 
@@ -24,4 +24,4 @@ For application controls and Wi-Fi setup, see the [user guide](USER_GUIDE.md).
 
 ## Troubleshooting
 
-Wi-Fi uses saved credentials first, otherwise the demonstration network configured in [wifi_manager.h](components/network_service/wifi_manager.h); connect another network through **Settings → Wi-Fi setup**, scan the displayed QR code or join its hotspot, and open `http://192.168.4.1`. Weather uses the included API settings for `cn.apihz.cn`; AIChats requires network activation, and a full `idf.py flash` is needed to install the speech model at `0x810000` as well as the application.
+Weather and AIChats require Internet access; complete AIChats activation using the instructions on screen. If a speech model is missing, flash the complete factory image or run a full `idf.py flash` rather than flashing only the application; see the [user guide](USER_GUIDE.md#common-questions) for other common issues.

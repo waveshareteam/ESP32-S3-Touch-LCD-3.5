@@ -1,3 +1,4 @@
+#include "bsp_board_extra.h"
 #include "settings_service.h"
 #include <algorithm>
 #include <cstdio>
@@ -62,7 +63,7 @@ void worker(void *)
         esp_err_t ret = ESP_OK;
         if (do_brightness) ret = bsp_display_brightness_set(brightness);
         if (do_volume) {
-            esp_err_t audio_ret = bsp_audio_volume_set(volume);
+            esp_err_t audio_ret = bsp_extra_codec_volume_set(volume, nullptr);
             if (ret == ESP_OK) ret = audio_ret;
         }
         esp_err_t saved = do_save ? save_controls(brightness, volume) : ESP_OK;
@@ -81,7 +82,7 @@ bool settings_service_start()
 {
     if (worker_handle) return true;
     state.brightness = bsp_display_brightness_get();
-    state.volume = bsp_audio_volume_get();
+    state.volume = bsp_extra_codec_volume_get();
     nvs_handle_t nvs;
     if (nvs_open("ui_settings", NVS_READONLY, &nvs) == ESP_OK) {
         uint8_t value;
@@ -89,7 +90,7 @@ bool settings_service_start()
             if (bsp_display_brightness_set(value) == ESP_OK) state.brightness = value;
         }
         if (nvs_get_u8(nvs, "volume", &value) == ESP_OK && value <= 100) {
-            if (bsp_audio_volume_set(value) == ESP_OK) state.volume = value;
+            if (bsp_extra_codec_volume_set(value, nullptr) == ESP_OK) state.volume = value;
         }
         nvs_close(nvs);
     }

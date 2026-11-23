@@ -6,7 +6,9 @@
 | --- | --- |
 | [ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin](ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin) | 12-application factory desktop with Button Test, Display Test and backlight enabled after the first frame; ESP-IDF v5.5.4 |
 
-This directory contains the latest factory firmware. Flash the merged image at **0x0**. It includes the bootloader, partition table, application and speech model; camera functions require a connected camera module.
+The latest factory firmware applies to both ESP32-S3-Touch-LCD-3.5 and the enclosed ESP32-S3-Touch-LCD-3.5-C. Camera features require a compatible camera module. The enclosed model includes an OV5640 camera.
+
+Flash the merged image at **0x0**. It includes the bootloader, partition table, application and speech model.
 
 ```bash
 python -m pip install esptool

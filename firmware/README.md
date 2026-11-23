@@ -2,11 +2,13 @@
 
 [English](README.md) | [简体中文](README_ZH.md)
 
+- **Compatible models:** ESP32-S3-Touch-LCD-3.5 (without enclosure) and ESP32-S3-Touch-LCD-3.5-C (with enclosure) share this factory firmware.
+- **Camera support:** Supports the **OV5640 camera**. The enclosed model includes the module; the model without an enclosure requires a separately connected camera module for camera functions.
+- **Web flashing:** Select **ESP32-S3-Touch-LCD-3.5** in the [firmware center](https://hub.waveshare.net/).
+
 | File | Purpose |
 | --- | --- |
 | [ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin](ESP32-S3-Touch-LCD-3.5_FactoryOnly_20261021.bin) | 12-application factory desktop with Button Test, Display Test and backlight enabled after the first frame; ESP-IDF v5.5.4 |
-
-The latest factory firmware applies to both ESP32-S3-Touch-LCD-3.5 and the enclosed ESP32-S3-Touch-LCD-3.5-C. Camera features require a compatible camera module. The enclosed model includes an OV5640 camera.
 
 Flash the merged image at **0x0**. It includes the bootloader, partition table, application and speech model.
 

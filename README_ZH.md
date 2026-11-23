@@ -119,6 +119,10 @@ ESP-IDF 用户在已启用的工具环境中进入所选示例目录，执行 `i
 
 - [V1 原理图](hardware/schematic/ESP32-S3-Touch-LCD-3.5-V1-Schematic.pdf)
 - [V2 原理图](hardware/schematic/ESP32-S3-Touch-LCD-3.5-V2-Schematic.pdf)
+- [2D/3D 完整资料（ZIP）](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-2Dand3D.zip)
+- 不带外壳版尺寸图：[PDF](hardware/mechanical/ESP32-S3-Touch-LCD-3.5.pdf) / [DWG](hardware/mechanical/ESP32-S3-Touch-LCD-3.5.dwg)
+- 带外壳版尺寸图：[PDF](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-C.pdf) / [DWG](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-C.dwg)
+- [3D 结构模型（STEP）](hardware/mechanical/ESP32-S3-Touch-LCD-3_5.stp)
 - [不带外壳版产品页](https://www.waveshare.net/shop/ESP32-S3-Touch-LCD-3.5.htm)
 - [带外壳版产品页](https://www.waveshare.net/shop/ESP32-S3-Touch-LCD-3.5-C.htm)
 - [中文 Wiki](https://docs.waveshare.net/ESP32-S3-Touch-LCD-3.5/)

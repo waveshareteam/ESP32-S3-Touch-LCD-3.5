@@ -119,6 +119,10 @@ For ESP-IDF, activate the tool environment, enter the selected example directory
 
 - [V1 schematic](hardware/schematic/ESP32-S3-Touch-LCD-3.5-V1-Schematic.pdf)
 - [V2 schematic](hardware/schematic/ESP32-S3-Touch-LCD-3.5-V2-Schematic.pdf)
+- [Complete 2D/3D package (ZIP)](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-2Dand3D.zip)
+- Dimensions without enclosure: [PDF](hardware/mechanical/ESP32-S3-Touch-LCD-3.5.pdf) / [DWG](hardware/mechanical/ESP32-S3-Touch-LCD-3.5.dwg)
+- Dimensions with enclosure: [PDF](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-C.pdf) / [DWG](hardware/mechanical/ESP32-S3-Touch-LCD-3.5-C.dwg)
+- [3D model (STEP)](hardware/mechanical/ESP32-S3-Touch-LCD-3_5.stp)
 - [Product without enclosure](https://www.waveshare.net/shop/ESP32-S3-Touch-LCD-3.5.htm)
 - [Product with enclosure](https://www.waveshare.net/shop/ESP32-S3-Touch-LCD-3.5-C.htm)
 - [Wiki](https://docs.waveshare.com/ESP32-S3-Touch-LCD-3.5/)
